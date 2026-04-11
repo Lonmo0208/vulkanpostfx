@@ -18,6 +18,7 @@ import java.util.List;
  * - 读取 active_pack_id 配置
  * - 仅在用户显式指定时激活外部 ZIP 包
  * - 否则默认回退到 builtin
+ * - 管理当前活动包的 entryPostEffect 元数据
  */
 public final class ActiveShaderPackManager {
     private static final String SHADER_PACK_DIRECTORY_NAME = "shaderpacks";
@@ -94,12 +95,13 @@ public final class ActiveShaderPackManager {
         }
 
         VulkanPostFX.LOGGER.info(
-                "[{}] Active shader pack set to '{}' from source '{}', entryEffectKey={}, entryPostEffect={}",
+                "[{}] Active shader pack set to '{}' from source '{}', entryEffectKey={}, entryPostEffect={}, entryPostEffectExists={}",
                 VulkanPostFX.MOD_ID,
                 activePack.manifest().name(),
                 activePack.sourceId(),
                 activePack.manifest().entryEffectKey(),
-                activePack.manifest().entryPostEffect()
+                activePack.manifest().entryPostEffect(),
+                hasActiveEntryPostEffect()
         );
 
         logDiscoveredPacks();
@@ -138,16 +140,30 @@ public final class ActiveShaderPackManager {
         return activePack.manifest().entryPostEffect();
     }
 
+    public static boolean hasActiveEntryPostEffect() {
+        if (activePack == null) {
+            return false;
+        }
+
+        String entryPostEffect = activePack.manifest().entryPostEffect();
+        if (entryPostEffect == null || entryPostEffect.isBlank()) {
+            return false;
+        }
+
+        return activePack.resourceIndex().exists(entryPostEffect);
+    }
+
     private static void logDiscoveredPacks() {
         for (ShaderPackContainer pack : discoveredPacks) {
             VulkanPostFX.LOGGER.info(
-                    "[{}] Discovered shader pack: name='{}', id='{}', source='{}', path={}, entryPostEffect={}",
+                    "[{}] Discovered shader pack: name='{}', id='{}', source='{}', path={}, entryPostEffect={}, resourceCount={}",
                     VulkanPostFX.MOD_ID,
                     pack.manifest().name(),
                     pack.manifest().id(),
                     pack.sourceId(),
                     pack.sourcePath(),
-                    pack.manifest().entryPostEffect()
+                    pack.manifest().entryPostEffect(),
+                    pack.resourceIndex().size()
             );
         }
     }

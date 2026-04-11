@@ -9,25 +9,36 @@ import java.nio.file.Path;
  * - manifest（清单）
  * - sourceId（来源标识）
  * - sourcePath（来源路径；内置包时可为 null）
- *
- * 后面扩展时可继续挂：
- * - zip 虚拟文件系统句柄
- * - 资源索引
- * - 包图标/描述等
+ * - resourceIndex（包内资源索引）
  */
 public final class ShaderPackContainer {
     private final ShaderPackManifest manifest;
     private final String sourceId;
     private final Path sourcePath;
+    private final ShaderPackResourceIndex resourceIndex;
 
     public ShaderPackContainer(ShaderPackManifest manifest, String sourceId) {
-        this(manifest, sourceId, null);
+        this(manifest, sourceId, null, ShaderPackResourceIndex.empty());
     }
 
-    public ShaderPackContainer(ShaderPackManifest manifest, String sourceId, Path sourcePath) {
+    public ShaderPackContainer(
+            ShaderPackManifest manifest,
+            String sourceId,
+            Path sourcePath
+    ) {
+        this(manifest, sourceId, sourcePath, ShaderPackResourceIndex.empty());
+    }
+
+    public ShaderPackContainer(
+            ShaderPackManifest manifest,
+            String sourceId,
+            Path sourcePath,
+            ShaderPackResourceIndex resourceIndex
+    ) {
         this.manifest = manifest;
         this.sourceId = sourceId;
         this.sourcePath = sourcePath;
+        this.resourceIndex = resourceIndex;
     }
 
     public ShaderPackManifest manifest() {
@@ -40,5 +51,9 @@ public final class ShaderPackContainer {
 
     public Path sourcePath() {
         return sourcePath;
+    }
+
+    public ShaderPackResourceIndex resourceIndex() {
+        return resourceIndex;
     }
 }

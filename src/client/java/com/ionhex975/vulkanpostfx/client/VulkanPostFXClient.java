@@ -4,6 +4,7 @@ import com.ionhex975.vulkanpostfx.VulkanPostFX;
 import com.ionhex975.vulkanpostfx.client.input.PostFxDebugKeybinds;
 import com.ionhex975.vulkanpostfx.client.pack.ActiveShaderPackManager;
 import com.ionhex975.vulkanpostfx.client.reload.PostFxReloadHooks;
+import com.ionhex975.vulkanpostfx.client.runtime.ActivePostEffectBridge;
 import com.ionhex975.vulkanpostfx.client.state.PostFxRuntimeState;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
@@ -19,6 +20,8 @@ public class VulkanPostFXClient implements ClientModInitializer {
 		if (ActiveShaderPackManager.getActivePack() != null) {
 			PostFxRuntimeState.setActiveEffectKey(ActiveShaderPackManager.getActiveEffectKey());
 		}
+
+		ActivePostEffectBridge.refreshFromActivePack();
 
 		PostFxDebugKeybinds.init();
 		ResourceManagerHelper.get(PackType.CLIENT_RESOURCES)

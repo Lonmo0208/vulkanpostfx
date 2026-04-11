@@ -9,7 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -86,24 +88,38 @@ public final class ZipShaderPackSource implements ShaderPackSource {
                 return null;
             }
 
+            ShaderPackResourceIndex resourceIndex = buildResourceIndex(zipFile);
+
             try (Reader reader = new InputStreamReader(
                     zipFile.getInputStream(manifestEntry),
                     StandardCharsets.UTF_8
             )) {
                 ShaderPackManifest manifest = ShaderPackManifestParser.parse(reader);
 
+                String entryPostEffect = ShaderPackResourceIndex.normalize(manifest.entryPostEffect());
+                if (!resourceIndex.exists(entryPostEffect)) {
+                    VulkanPostFX.LOGGER.warn(
+                            "[{}] Skipping zip shader pack '{}' because entry_post_effect does not exist in zip: {}",
+                            VulkanPostFX.MOD_ID,
+                            zipPath.getFileName(),
+                            entryPostEffect
+                    );
+                    return null;
+                }
+
                 VulkanPostFX.LOGGER.info(
-                        "[{}] Parsed shader pack manifest from zip '{}': id='{}', name='{}', version={}, entryEffectKey={}, entryPostEffect={}",
+                        "[{}] Parsed shader pack manifest from zip '{}': id='{}', name='{}', version={}, entryEffectKey={}, entryPostEffect={}, resourceCount={}",
                         VulkanPostFX.MOD_ID,
                         zipPath.getFileName(),
                         manifest.id(),
                         manifest.name(),
                         manifest.version(),
                         manifest.entryEffectKey(),
-                        manifest.entryPostEffect()
+                        manifest.entryPostEffect(),
+                        resourceIndex.size()
                 );
 
-                return new ShaderPackContainer(manifest, SOURCE_ID, zipPath);
+                return new ShaderPackContainer(manifest, SOURCE_ID, zipPath, resourceIndex);
             }
         } catch (Exception e) {
             VulkanPostFX.LOGGER.error(
@@ -114,5 +130,17 @@ public final class ZipShaderPackSource implements ShaderPackSource {
             );
             return null;
         }
+    }
+
+    private ShaderPackResourceIndex buildResourceIndex(ZipFile zipFile) {
+        Set<String> resources = new LinkedHashSet<>();
+
+        zipFile.stream()
+                .filter(entry -> !entry.isDirectory())
+                .map(ZipEntry::getName)
+                .map(ShaderPackResourceIndex::normalize)
+                .forEach(resources::add);
+
+        return new ShaderPackResourceIndex(resources);
     }
 }

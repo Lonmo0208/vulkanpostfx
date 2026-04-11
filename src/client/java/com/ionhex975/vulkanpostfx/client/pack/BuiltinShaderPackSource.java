@@ -2,7 +2,9 @@ package com.ionhex975.vulkanpostfx.client.pack;
 
 import com.ionhex975.vulkanpostfx.client.effect.PostFxEffectRegistry;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 内置开发包来源。
@@ -27,6 +29,14 @@ public final class BuiltinShaderPackSource implements ShaderPackSource {
                 "assets/vulkanpostfx/post_effect/debug_invert.json"
         );
 
-        return List.of(new ShaderPackContainer(manifest, SOURCE_ID, null));
+        Set<String> resources = new LinkedHashSet<>();
+        resources.add("assets/vulkanpostfx/post_effect/debug_invert.json");
+        resources.add("assets/vulkanpostfx/shaders/post/fullscreen.vsh");
+        resources.add("assets/vulkanpostfx/shaders/post/invert.fsh");
+        resources.add("assets/vulkanpostfx/shaders/post/blit.fsh");
+
+        ShaderPackResourceIndex index = new ShaderPackResourceIndex(resources);
+
+        return List.of(new ShaderPackContainer(manifest, SOURCE_ID, null, index));
     }
 }
