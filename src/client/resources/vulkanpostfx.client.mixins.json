@@ -1,0 +1,16 @@
+{
+	"required": true,
+	"package": "com.ionhex975.vulkanpostfx.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"LevelRendererRenderLevelMixin",
+		"GameRendererPostSlotMixin",
+		"GameRendererAccessor"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
