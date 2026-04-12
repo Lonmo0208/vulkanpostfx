@@ -14,6 +14,19 @@ import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.resources.Identifier;
 
+import com.ionhex975.vulkanpostfx.client.shadow.ShadowMapManager;
+import com.ionhex975.vulkanpostfx.client.shadow.ShadowRuntimeState;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+
+import com.ionhex975.vulkanpostfx.client.shadow.ShadowFrameCoordinator;
+import com.ionhex975.vulkanpostfx.client.shadow.ShadowFrameState;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import org.joml.Vector3f;
+
 public final class PostFxHookBridge {
     private static boolean firstWorldFrameLogged;
     private static boolean firstWorldFrameFinishedLogged;
@@ -23,8 +36,15 @@ public final class PostFxHookBridge {
     private PostFxHookBridge() {
     }
 
-    public static void onWorldRenderHead(Minecraft minecraft, boolean renderOutline, boolean shouldRenderSky) {
+    public static void onWorldRenderHead(
+            Minecraft minecraft,
+            DeltaTracker deltaTracker,
+            CameraRenderState cameraState,
+            boolean renderOutline,
+            boolean shouldRenderSky
+    ) {
         PostFxRuntimeState.markWorldRenderObserved();
+        ShadowFrameCoordinator.syncFrame(minecraft, deltaTracker, cameraState);
 
         if (!firstWorldFrameLogged) {
             firstWorldFrameLogged = true;
@@ -37,15 +57,23 @@ public final class PostFxHookBridge {
             int height = mainTarget.height;
             boolean improvedTransparency = minecraft.options.improvedTransparency().get();
 
+            ShadowFrameState shadowState = ShadowFrameState.get();
+            Vector3f sunDir = shadowState.getSunDirection();
+
             VulkanPostFX.LOGGER.info(
-                    "[{}] World render observed (HEAD), backend={}, size={}x{}, improvedTransparency={}, renderOutline={}, shouldRenderSky={}",
+                    "[{}] World render observed (HEAD), backend={}, size={}x{}, improvedTransparency={}, renderOutline={}, shouldRenderSky={}, shadowStateValid={}, shadowAngle={}, sunDir=({}, {}, {})",
                     VulkanPostFX.MOD_ID,
                     backend,
                     width,
                     height,
                     improvedTransparency,
                     renderOutline,
-                    shouldRenderSky
+                    shouldRenderSky,
+                    shadowState.isValid(),
+                    Math.round(shadowState.getShadowAngle() * 1000.0F) / 1000.0F,
+                    Math.round(sunDir.x * 1000.0F) / 1000.0F,
+                    Math.round(sunDir.y * 1000.0F) / 1000.0F,
+                    Math.round(sunDir.z * 1000.0F) / 1000.0F
             );
         }
     }

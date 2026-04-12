@@ -10,19 +10,13 @@ import net.minecraft.client.renderer.chunk.ChunkSectionsToRender;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererRenderLevelMixin {
-    @Shadow
-    @Final
-    private Minecraft minecraft;
-
     @Inject(method = "renderLevel", at = @At("HEAD"))
     private void vulkanpostfx$onRenderLevelHead(
             GraphicsResourceAllocator resourceAllocator,
@@ -36,10 +30,16 @@ public abstract class LevelRendererRenderLevelMixin {
             ChunkSectionsToRender chunkSectionsToRender,
             CallbackInfo ci
     ) {
-        PostFxHookBridge.onWorldRenderHead(this.minecraft, renderOutline, shouldRenderSky);
+        PostFxHookBridge.onWorldRenderHead(
+                Minecraft.getInstance(),
+                deltaTracker,
+                cameraState,
+                renderOutline,
+                shouldRenderSky
+        );
     }
 
-    @Inject(method = "renderLevel", at = @At("RETURN"))
+    @Inject(method = "renderLevel", at = @At("TAIL"))
     private void vulkanpostfx$onRenderLevelTail(
             GraphicsResourceAllocator resourceAllocator,
             DeltaTracker deltaTracker,
@@ -52,6 +52,6 @@ public abstract class LevelRendererRenderLevelMixin {
             ChunkSectionsToRender chunkSectionsToRender,
             CallbackInfo ci
     ) {
-        PostFxHookBridge.onWorldRenderTail(this.minecraft);
+        PostFxHookBridge.onWorldRenderTail(Minecraft.getInstance());
     }
 }
