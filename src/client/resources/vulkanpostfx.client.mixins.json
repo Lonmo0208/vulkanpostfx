@@ -6,6 +6,9 @@
 		"LevelRendererRenderLevelMixin",
 		"GameRendererPostSlotMixin",
 		"RuntimeZipPackProfileInjectorMixin",
+		"ShaderManagerCompilationCacheMixin",
+		"PostChainAccessor",
+		"PostChainProcessMixin",
 		"GameRendererAccessor"
 	],
 	"injectors": {
