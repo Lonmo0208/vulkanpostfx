@@ -9,9 +9,8 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 /**
- * Shadow Pipeline v1 第一批：每帧同步阴影矩阵与太阳方向。
- *
- * 当前阶段不渲染 shadow map，只先把“真阴影必需的数学状态”搭起来。
+ * Shadow Pipeline v1/v2：
+ * 每帧同步阴影矩阵、太阳方向，并准备 shadow target。
  */
 public final class ShadowFrameCoordinator {
     private static final float DEFAULT_SHADOW_HALF_PLANE = 72.0F;
@@ -33,7 +32,6 @@ public final class ShadowFrameCoordinator {
             return;
         }
 
-        // 26.2 当前映射下，直接从环境属性取太阳角度，再转成 [0, 1) 区间。
         float sunAngleDegrees = minecraft.gameRenderer
                 .getMainCamera()
                 .attributeProbe()
@@ -71,6 +69,8 @@ public final class ShadowFrameCoordinator {
                 shadowView,
                 shadowProjection
         );
+
+        ShadowRendererLite.prepareFrame(minecraft, cameraState);
 
         if (!firstFrameLogged) {
             firstFrameLogged = true;

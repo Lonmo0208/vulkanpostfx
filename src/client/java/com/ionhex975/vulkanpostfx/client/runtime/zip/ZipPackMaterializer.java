@@ -90,17 +90,15 @@ public final class ZipPackMaterializer {
 
     private static void writePackMcmeta(Path runtimeRoot) throws IOException {
         String mcmeta = """
-            {
-              "pack": {
-                "pack_format": %d,
-                "supported_formats": {
-                  "min_format": %d,
-                  "max_format": %d
-                },
-                "description": "VulkanPostFX runtime zip shader pack"
-              }
-            }
-            """.formatted(RESOURCE_PACK_FORMAT, RESOURCE_PACK_FORMAT, RESOURCE_PACK_FORMAT);
+        {
+          "pack": {
+            "pack_format": %d,
+            "min_format": %d,
+            "max_format": %d,
+            "description": "VulkanPostFX runtime zip shader pack"
+          }
+        }
+        """.formatted(RESOURCE_PACK_FORMAT, RESOURCE_PACK_FORMAT, RESOURCE_PACK_FORMAT);
 
         Files.writeString(runtimeRoot.resolve("pack.mcmeta"), mcmeta, StandardCharsets.UTF_8);
     }

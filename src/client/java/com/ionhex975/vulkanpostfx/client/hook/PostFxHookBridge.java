@@ -14,11 +14,21 @@ import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.resources.Identifier;
 
+import com.ionhex975.vulkanpostfx.client.shadow.ShadowDepthMirrorPass;
+
 import com.ionhex975.vulkanpostfx.client.shadow.ShadowMapManager;
 import com.ionhex975.vulkanpostfx.client.shadow.ShadowRuntimeState;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+
+import com.ionhex975.vulkanpostfx.client.shadow.ShadowFrameCoordinator;
+import com.ionhex975.vulkanpostfx.client.shadow.ShadowFrameState;
+import com.ionhex975.vulkanpostfx.client.shadow.ShadowRendererLite;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import org.joml.Vector3f;
 
 import com.ionhex975.vulkanpostfx.client.shadow.ShadowFrameCoordinator;
 import com.ionhex975.vulkanpostfx.client.shadow.ShadowFrameState;
@@ -33,6 +43,8 @@ public final class PostFxHookBridge {
     private static boolean firstPostSlotLogged;
     private static Boolean lastAppliedDebugState;
 
+    private static boolean firstWorldTailLogged;
+
     private PostFxHookBridge() {
     }
 
@@ -45,6 +57,7 @@ public final class PostFxHookBridge {
     ) {
         PostFxRuntimeState.markWorldRenderObserved();
         ShadowFrameCoordinator.syncFrame(minecraft, deltaTracker, cameraState);
+        ShadowRendererLite.executeShadowPassLite();
 
         if (!firstWorldFrameLogged) {
             firstWorldFrameLogged = true;
@@ -61,7 +74,7 @@ public final class PostFxHookBridge {
             Vector3f sunDir = shadowState.getSunDirection();
 
             VulkanPostFX.LOGGER.info(
-                    "[{}] World render observed (HEAD), backend={}, size={}x{}, improvedTransparency={}, renderOutline={}, shouldRenderSky={}, shadowStateValid={}, shadowAngle={}, sunDir=({}, {}, {})",
+                    "[{}] World render observed (HEAD), backend={}, size={}x{}, improvedTransparency={}, renderOutline={}, shouldRenderSky={}, shadowStateValid={}, shadowTargetReady={}, shadowPassExecuted={}, shadowMapSize={}, shadowAngle={}, sunDir=({}, {}, {})",
                     VulkanPostFX.MOD_ID,
                     backend,
                     width,
@@ -70,6 +83,9 @@ public final class PostFxHookBridge {
                     renderOutline,
                     shouldRenderSky,
                     shadowState.isValid(),
+                    shadowState.isShadowTargetReady(),
+                    shadowState.wasShadowPassExecuted(),
+                    shadowState.getShadowMapSize(),
                     Math.round(shadowState.getShadowAngle() * 1000.0F) / 1000.0F,
                     Math.round(sunDir.x * 1000.0F) / 1000.0F,
                     Math.round(sunDir.y * 1000.0F) / 1000.0F,
@@ -79,15 +95,20 @@ public final class PostFxHookBridge {
     }
 
     public static void onWorldRenderTail(Minecraft minecraft) {
-        if (!firstWorldFrameFinishedLogged) {
-            firstWorldFrameFinishedLogged = true;
+        ShadowDepthMirrorPass.copyMainDepthToShadow(minecraft);
+
+        if (!firstWorldTailLogged) {
+            firstWorldTailLogged = true;
 
             RenderTarget mainTarget = minecraft.getMainRenderTarget();
+            ShadowFrameState shadowState = ShadowFrameState.get();
+
             VulkanPostFX.LOGGER.info(
-                    "[{}] World render finished (TAIL), mainTarget={}x{}",
+                    "[{}] World render finished (TAIL), mainTarget={}x{}, shadowDepthMirrored={}",
                     VulkanPostFX.MOD_ID,
                     mainTarget.width,
-                    mainTarget.height
+                    mainTarget.height,
+                    shadowState.wasShadowDepthMirrored()
             );
         }
     }
