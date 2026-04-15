@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"id": "vulkanpostfx",
-	"version": "1.3.0+mc1.21.4-2026-04-12",
+	"version": "1.4.0+mc1.21.4-2026-04-14",
 	"name": "Vulkan PostFX",
 	"description": "Official Vulkan backend post-processing proof of concept for Minecraft 26.2 snapshots.",
 	"authors": [

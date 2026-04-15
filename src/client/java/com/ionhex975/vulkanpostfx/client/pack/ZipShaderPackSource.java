@@ -1,11 +1,11 @@
 package com.ionhex975.vulkanpostfx.client.pack;
 
 import com.ionhex975.vulkanpostfx.VulkanPostFX;
+import com.ionhex975.vulkanpostfx.client.pack.vpfx.VpfxNativePackDefinition;
+import com.ionhex975.vulkanpostfx.client.pack.vpfx.VpfxNativeZipPackLoader;
+import com.ionhex975.vulkanpostfx.client.pack.vpfx.VpfxPackLoadException;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -15,12 +15,24 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+/**
+ * ZIP 光影包来源。
+ *
+ * 现在的正式入口策略：
+ * - ZIP 根必须存在 pack.json
+ * - pack.json 必须符合 VPFX native pack format v1
+ * - 解析入口走 VpfxNativeZipPackLoader
+ *
+ * 注意：
+ * - 这里只替换“发现/识别/校验”入口
+ * - 后续 runtime materialization / ActivePostEffectBridge 仍复用现有成熟链
+ */
 public final class ZipShaderPackSource implements ShaderPackSource {
     public static final String SOURCE_ID = "zip";
     private static final String ZIP_SUFFIX = ".zip";
-    private static final String MANIFEST_PATH = "pack.json";
 
     private final Path shaderPackDirectory;
+    private final VpfxNativeZipPackLoader vpfxLoader = new VpfxNativeZipPackLoader();
 
     public ZipShaderPackSource(Path shaderPackDirectory) {
         this.shaderPackDirectory = shaderPackDirectory;
@@ -76,51 +88,61 @@ public final class ZipShaderPackSource implements ShaderPackSource {
     }
 
     private ShaderPackContainer createContainerFromZip(Path zipPath) {
-        try (ZipFile zipFile = new ZipFile(zipPath.toFile())) {
-            ZipEntry manifestEntry = zipFile.getEntry(MANIFEST_PATH);
-            if (manifestEntry == null) {
+        try {
+            VpfxNativePackDefinition vpfxPack = vpfxLoader.tryLoad(zipPath);
+            if (vpfxPack == null) {
                 VulkanPostFX.LOGGER.warn(
-                        "[{}] Skipping zip shader pack without {} at zip root: {}",
+                        "[{}] Skipping zip that is not a VPFX native pack: {}",
                         VulkanPostFX.MOD_ID,
-                        MANIFEST_PATH,
-                        zipPath
+                        zipPath.getFileName()
                 );
                 return null;
             }
 
-            ShaderPackResourceIndex resourceIndex = buildResourceIndex(zipFile);
+            ShaderPackResourceIndex resourceIndex = buildResourceIndex(zipPath);
 
-            try (Reader reader = new InputStreamReader(
-                    zipFile.getInputStream(manifestEntry),
-                    StandardCharsets.UTF_8
-            )) {
-                ShaderPackManifest manifest = ShaderPackManifestParser.parse(reader);
+            // 这里先做“适配壳”：
+            // - 继续把 VPFX manifest 投影成旧 ShaderPackManifest
+            // - 这样后半段 ActiveShaderPackManager / ActivePostEffectBridge / ZipPackMaterializer
+            //   都可以先不动
+            ShaderPackManifest bridgedManifest = new ShaderPackManifest(
+                    vpfxPack.getManifest().getPackId(),
+                    vpfxPack.getManifest().getName(),
+                    vpfxPack.getManifest().getFormatVersion(),
+                    "", // VPFX v1 不再使用 entry_effect_key
+                    ShaderPackResourceIndex.normalize(vpfxPack.getManifest().getEntryPostEffect())
+            );
 
-                String entryPostEffect = ShaderPackResourceIndex.normalize(manifest.entryPostEffect());
-                if (!resourceIndex.exists(entryPostEffect)) {
-                    VulkanPostFX.LOGGER.warn(
-                            "[{}] Skipping zip shader pack '{}' because entry_post_effect does not exist in zip: {}",
-                            VulkanPostFX.MOD_ID,
-                            zipPath.getFileName(),
-                            entryPostEffect
-                    );
-                    return null;
-                }
+            VulkanPostFX.LOGGER.info(
+                    "[{}] VPFX native pack parsed from zip '{}': id='{}', name='{}', formatVersion={}, entryPostEffect={}, targets={}, passes={}, resourceCount={}",
+                    VulkanPostFX.MOD_ID,
+                    zipPath.getFileName(),
+                    vpfxPack.getManifest().getPackId(),
+                    vpfxPack.getManifest().getName(),
+                    vpfxPack.getManifest().getFormatVersion(),
+                    vpfxPack.getManifest().getEntryPostEffect(),
+                    vpfxPack.getGraph().getTargets().size(),
+                    vpfxPack.getGraph().getPasses().size(),
+                    resourceIndex.size()
+            );
 
-                VulkanPostFX.LOGGER.info(
-                        "[{}] Parsed shader pack manifest from zip '{}': id='{}', name='{}', version={}, entryEffectKey={}, entryPostEffect={}, resourceCount={}",
-                        VulkanPostFX.MOD_ID,
-                        zipPath.getFileName(),
-                        manifest.id(),
-                        manifest.name(),
-                        manifest.version(),
-                        manifest.entryEffectKey(),
-                        manifest.entryPostEffect(),
-                        resourceIndex.size()
-                );
-
-                return new ShaderPackContainer(manifest, SOURCE_ID, zipPath, resourceIndex);
-            }
+            return new ShaderPackContainer(
+                    bridgedManifest,
+                    SOURCE_ID,
+                    zipPath,
+                    resourceIndex,
+                    vpfxPack
+            );
+        } catch (VpfxPackLoadException e) {
+            VulkanPostFX.LOGGER.error(
+                    "[{}] Failed to load VPFX native pack from '{}': [{}][{}] {}",
+                    VulkanPostFX.MOD_ID,
+                    zipPath.getFileName(),
+                    e.getCode(),
+                    e.getPath(),
+                    e.getMessage()
+            );
+            return null;
         } catch (Exception e) {
             VulkanPostFX.LOGGER.error(
                     "[{}] Failed to parse zip shader pack: {}",
@@ -132,14 +154,16 @@ public final class ZipShaderPackSource implements ShaderPackSource {
         }
     }
 
-    private ShaderPackResourceIndex buildResourceIndex(ZipFile zipFile) {
+    private ShaderPackResourceIndex buildResourceIndex(Path zipPath) throws IOException {
         Set<String> resources = new LinkedHashSet<>();
 
-        zipFile.stream()
-                .filter(entry -> !entry.isDirectory())
-                .map(ZipEntry::getName)
-                .map(ShaderPackResourceIndex::normalize)
-                .forEach(resources::add);
+        try (ZipFile zipFile = new ZipFile(zipPath.toFile())) {
+            zipFile.stream()
+                    .filter(entry -> !entry.isDirectory())
+                    .map(ZipEntry::getName)
+                    .map(ShaderPackResourceIndex::normalize)
+                    .forEach(resources::add);
+        }
 
         return new ShaderPackResourceIndex(resources);
     }
