@@ -20,6 +20,7 @@ import java.util.zip.ZipFile;
 public final class VpfxPackManifestParser {
     private static final Pattern PACK_ID_PATTERN = Pattern.compile("^[a-z0-9_.-]{3,64}$");
     private static final Pattern TARGET_ID_PATTERN = Pattern.compile("^[a-z0-9_.-]+:[a-z0-9_./-]+$");
+    private static final Pattern TEXTURE_NAME_PATTERN = Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
 
     public VpfxPackManifest parse(ZipFile zipFile) throws VpfxManifestParseException {
         JsonObject root = readPackJson(zipFile);
@@ -59,6 +60,7 @@ public final class VpfxPackManifestParser {
 
         VpfxCapabilitySet capabilities = parseCapabilities(root);
         Map<String, String> targets = parseTargets(root, capabilities);
+        Map<String, VpfxTextureManifestEntry> textures = parseTextures(root, zipFile);
         VpfxPackMetadata metadata = parseMetadata(root);
 
         return new VpfxPackManifest(
@@ -71,6 +73,7 @@ public final class VpfxPackManifestParser {
                 entryPostEffect,
                 capabilities,
                 targets,
+                textures,
                 metadata
         );
     }
@@ -165,6 +168,89 @@ public final class VpfxPackManifestParser {
                     "targets.shadow_depth",
                     "shadow_depth target mapping is required when shadow_depth capability is enabled"
             );
+        }
+
+        return result;
+    }
+
+    private Map<String, VpfxTextureManifestEntry> parseTextures(JsonObject root, ZipFile zipFile)
+            throws VpfxManifestParseException {
+        Map<String, VpfxTextureManifestEntry> result = new LinkedHashMap<>();
+
+        if (!root.has("textures")) {
+            return result;
+        }
+
+        JsonObject texturesObject = getRequiredObject(root, "textures", "textures");
+        for (Map.Entry<String, JsonElement> entry : texturesObject.entrySet()) {
+            String textureName = entry.getKey();
+            String pathBase = "textures." + textureName;
+
+            if (!TEXTURE_NAME_PATTERN.matcher(textureName).matches()) {
+                throw new VpfxManifestParseException(
+                        "F008",
+                        pathBase,
+                        "Invalid texture name. Expected GLSL-safe identifier"
+                );
+            }
+
+            if (!entry.getValue().isJsonObject()) {
+                throw new VpfxManifestParseException(
+                        "F008",
+                        pathBase,
+                        "Texture entry must be an object"
+                );
+            }
+
+            JsonObject object = entry.getValue().getAsJsonObject();
+            String texturePath = getRequiredString(object, "path", pathBase + ".path");
+            if (texturePath.isBlank()) {
+                throw new VpfxManifestParseException(
+                        "F008",
+                        pathBase + ".path",
+                        "Texture path must not be blank"
+                );
+            }
+
+            if (zipFile.getEntry(texturePath) == null) {
+                throw new VpfxManifestParseException(
+                        "F008",
+                        pathBase + ".path",
+                        "Texture file not found in zip: " + texturePath
+                );
+            }
+
+            String filterRaw = getOptionalString(object, "filter");
+            String wrapRaw = getOptionalString(object, "wrap");
+
+            VpfxTextureFilter filter;
+            VpfxTextureWrap wrap;
+            try {
+                filter = VpfxTextureFilter.fromJson(filterRaw.isBlank() ? null : filterRaw);
+            } catch (IllegalArgumentException e) {
+                throw new VpfxManifestParseException(
+                        "F008",
+                        pathBase + ".filter",
+                        e.getMessage()
+                );
+            }
+
+            try {
+                wrap = VpfxTextureWrap.fromJson(wrapRaw.isBlank() ? null : wrapRaw);
+            } catch (IllegalArgumentException e) {
+                throw new VpfxManifestParseException(
+                        "F008",
+                        pathBase + ".wrap",
+                        e.getMessage()
+                );
+            }
+
+            result.put(textureName, new VpfxTextureManifestEntry(
+                    textureName,
+                    texturePath,
+                    filter,
+                    wrap
+            ));
         }
 
         return result;
@@ -269,7 +355,6 @@ public final class VpfxPackManifestParser {
                     "Expected integer field: " + key
             );
         }
-
         return parent.get(key).getAsInt();
     }
 
@@ -283,7 +368,6 @@ public final class VpfxPackManifestParser {
                     "Expected boolean field: " + key
             );
         }
-
         return parent.get(key).getAsBoolean();
     }
 }

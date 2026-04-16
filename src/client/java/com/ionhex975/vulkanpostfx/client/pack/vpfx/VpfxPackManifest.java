@@ -12,6 +12,7 @@ public final class VpfxPackManifest {
     private final String entryPostEffect;
     private final VpfxCapabilitySet capabilities;
     private final Map<String, String> targets;
+    private final Map<String, VpfxTextureManifestEntry> textures;
     private final VpfxPackMetadata metadata;
 
     public VpfxPackManifest(
@@ -24,6 +25,7 @@ public final class VpfxPackManifest {
             String entryPostEffect,
             VpfxCapabilitySet capabilities,
             Map<String, String> targets,
+            Map<String, VpfxTextureManifestEntry> textures,
             VpfxPackMetadata metadata
     ) {
         this.formatVersion = formatVersion;
@@ -35,6 +37,7 @@ public final class VpfxPackManifest {
         this.entryPostEffect = entryPostEffect;
         this.capabilities = capabilities;
         this.targets = Map.copyOf(targets);
+        this.textures = Map.copyOf(textures);
         this.metadata = metadata;
     }
 
@@ -74,6 +77,10 @@ public final class VpfxPackManifest {
         return targets;
     }
 
+    public Map<String, VpfxTextureManifestEntry> getTextures() {
+        return textures;
+    }
+
     public VpfxPackMetadata getMetadata() {
         return metadata;
     }
@@ -88,6 +95,7 @@ public final class VpfxPackManifest {
                 ", entryPostEffect='" + entryPostEffect + '\'' +
                 ", capabilities=" + capabilities +
                 ", targets=" + targets +
+                ", textures=" + textures +
                 '}';
     }
 }

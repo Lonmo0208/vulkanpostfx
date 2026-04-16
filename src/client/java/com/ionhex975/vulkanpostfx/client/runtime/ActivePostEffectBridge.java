@@ -9,6 +9,8 @@ import com.ionhex975.vulkanpostfx.client.runtime.posteffect.ZipPostEffectConfig;
 import com.ionhex975.vulkanpostfx.client.runtime.posteffect.ZipPostEffectParser;
 import com.ionhex975.vulkanpostfx.client.runtime.posteffect.ZipShaderReferenceValidationResult;
 import com.ionhex975.vulkanpostfx.client.runtime.posteffect.ZipShaderReferenceValidator;
+import com.ionhex975.vulkanpostfx.client.runtime.texture.VpfxRuntimeTextureBootstrap;
+import com.ionhex975.vulkanpostfx.client.runtime.texture.VpfxRuntimeTextureRegistry;
 import com.ionhex975.vulkanpostfx.client.runtime.zip.RuntimeZipPackMaterializationResult;
 import com.ionhex975.vulkanpostfx.client.runtime.zip.RuntimeZipPackState;
 import com.ionhex975.vulkanpostfx.client.runtime.zip.ZipPackMaterializer;
@@ -26,10 +28,14 @@ public final class ActivePostEffectBridge {
         if (activePack == null) {
             activeSource = ActivePostEffectSource.NONE;
             RuntimeZipPackState.clear();
+            VpfxRuntimeTextureRegistry.clear();
             PostFxRuntimeState.clearActiveExternalPostEffectId();
             PostFxRuntimeState.setActiveEffectKey(PostFxEffectRegistry.DEBUG_INVERT);
 
-            VulkanPostFX.LOGGER.warn("[{}] No active shader pack; active post effect source cleared", VulkanPostFX.MOD_ID);
+            VulkanPostFX.LOGGER.warn(
+                    "[{}] No active shader pack; active post effect source cleared",
+                    VulkanPostFX.MOD_ID
+            );
             return;
         }
 
@@ -37,6 +43,7 @@ public final class ActivePostEffectBridge {
         if (entryPostEffect == null || entryPostEffect.isBlank()) {
             activeSource = ActivePostEffectSource.NONE;
             RuntimeZipPackState.clear();
+            VpfxRuntimeTextureRegistry.clear();
             PostFxRuntimeState.clearActiveExternalPostEffectId();
             PostFxRuntimeState.setActiveEffectKey(PostFxEffectRegistry.DEBUG_INVERT);
 
@@ -58,6 +65,7 @@ public final class ActivePostEffectBridge {
             );
 
             RuntimeZipPackState.clear();
+            VpfxRuntimeTextureRegistry.clear();
             PostFxRuntimeState.clearActiveExternalPostEffectId();
             PostFxRuntimeState.setActiveEffectKey(ActiveShaderPackManager.getActiveEffectKey());
 
@@ -80,6 +88,7 @@ public final class ActivePostEffectBridge {
                 if (!validationResult.isValid()) {
                     activeSource = ActivePostEffectSource.NONE;
                     RuntimeZipPackState.clear();
+                    VpfxRuntimeTextureRegistry.clear();
                     PostFxRuntimeState.clearActiveExternalPostEffectId();
                     PostFxRuntimeState.setActiveEffectKey(PostFxEffectRegistry.DEBUG_INVERT);
 
@@ -98,6 +107,13 @@ public final class ActivePostEffectBridge {
                 );
 
                 RuntimeZipPackState.apply(materialized);
+
+                // 注册 runtime texture manifest，供后续 pass/sampler 绑定使用
+                VpfxRuntimeTextureRegistry.clear();
+                VpfxRuntimeTextureBootstrap.registerRuntimeTextureManifest(
+                        materialized.runtimeTextureManifestPath()
+                );
+
                 PostFxRuntimeState.setActiveExternalPostEffectId(materialized.externalPostEffectId());
                 PostFxRuntimeState.setActiveEffectKey(PostFxEffectRegistry.DEBUG_INVERT);
 
@@ -110,7 +126,7 @@ public final class ActivePostEffectBridge {
                 );
 
                 VulkanPostFX.LOGGER.info(
-                        "[{}] Active post effect source loaded from zip: {} ({} chars, {} targets, {} passes, checkedShaders={}, runtimeNamespace={}, externalPostEffectId={})",
+                        "[{}] Active post effect source loaded from zip: {} ({} chars, {} targets, {} passes, checkedShaders={}, runtimeNamespace={}, externalPostEffectId={}, runtimeTextureManifest={})",
                         VulkanPostFX.MOD_ID,
                         activeSource.displayPath(),
                         rawJson.length(),
@@ -118,12 +134,14 @@ public final class ActivePostEffectBridge {
                         parsedConfig.passes().size(),
                         validationResult.checkedCount(),
                         materialized.runtimeNamespace(),
-                        materialized.externalPostEffectId()
+                        materialized.externalPostEffectId(),
+                        materialized.runtimeTextureManifestPath()
                 );
                 return;
             } catch (Exception e) {
                 activeSource = ActivePostEffectSource.NONE;
                 RuntimeZipPackState.clear();
+                VpfxRuntimeTextureRegistry.clear();
                 PostFxRuntimeState.clearActiveExternalPostEffectId();
                 PostFxRuntimeState.setActiveEffectKey(PostFxEffectRegistry.DEBUG_INVERT);
 
@@ -139,6 +157,7 @@ public final class ActivePostEffectBridge {
 
         activeSource = ActivePostEffectSource.NONE;
         RuntimeZipPackState.clear();
+        VpfxRuntimeTextureRegistry.clear();
         PostFxRuntimeState.clearActiveExternalPostEffectId();
         PostFxRuntimeState.setActiveEffectKey(PostFxEffectRegistry.DEBUG_INVERT);
 
