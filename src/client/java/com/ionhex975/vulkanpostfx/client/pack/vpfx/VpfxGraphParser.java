@@ -158,7 +158,9 @@ public final class VpfxGraphParser {
 
             JsonObject inputObject = inputElement.getAsJsonObject();
             String samplerName = getRequiredString(inputObject, "sampler_name", path + ".sampler_name");
-            String target = getRequiredString(inputObject, "target", path + ".target");
+
+            String target = getOptionalString(inputObject, "target");
+            String texture = getOptionalString(inputObject, "texture");
 
             boolean useDepthBuffer = false;
             if (inputObject.has("use_depth_buffer")) {
@@ -173,7 +175,31 @@ public final class VpfxGraphParser {
                 useDepthBuffer = depthElement.getAsBoolean();
             }
 
-            result.add(new VpfxPassInput(samplerName, target, useDepthBuffer));
+            boolean hasTarget = target != null && !target.isBlank();
+            boolean hasTexture = texture != null && !texture.isBlank();
+
+            if (hasTarget == hasTexture) {
+                throw new VpfxGraphParseException(
+                        "G032",
+                        path,
+                        "Each pass input must contain exactly one of: target or texture"
+                );
+            }
+
+            if (hasTexture && useDepthBuffer) {
+                throw new VpfxGraphParseException(
+                        "G033",
+                        path,
+                        "texture input does not support use_depth_buffer=true"
+                );
+            }
+
+            result.add(new VpfxPassInput(
+                    samplerName,
+                    hasTarget ? target : "",
+                    hasTexture ? texture : "",
+                    useDepthBuffer
+            ));
         }
 
         return result;
@@ -230,5 +256,18 @@ public final class VpfxGraphParser {
             throw new VpfxGraphParseException("G056", path, "String field must not be blank: " + key);
         }
         return value;
+    }
+
+    private String getOptionalString(JsonObject parent, String key) throws VpfxGraphParseException {
+        if (!parent.has(key)) {
+            return "";
+        }
+
+        JsonElement element = parent.get(key);
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            throw new VpfxGraphParseException("G058", key, "Optional field must be a string: " + key);
+        }
+
+        return element.getAsString();
     }
 }

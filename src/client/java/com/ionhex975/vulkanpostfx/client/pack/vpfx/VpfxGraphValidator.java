@@ -22,16 +22,15 @@ public final class VpfxGraphValidator {
     ) {
         List<VpfxValidationMessage> messages = new ArrayList<>();
 
-        // capability 对 runtime 的硬检查
         validateCapabilities(manifest, runtimeCapabilities, messages);
 
-        // graph 基本检查
         if (graph.getPasses().isEmpty()) {
             messages.add(fatal("G002", "passes", "VPFX graph must contain at least one pass"));
             return messages;
         }
 
         Map<String, VpfxTargetDefinition> declaredTargets = graph.getTargets();
+        Map<String, VpfxTextureManifestEntry> declaredTextures = manifest.getTextures();
 
         for (Map.Entry<String, VpfxTargetDefinition> entry : declaredTargets.entrySet()) {
             String targetId = entry.getKey();
@@ -75,31 +74,51 @@ public final class VpfxGraphValidator {
                     messages.add(fatal("G009", inputPath + ".sampler_name", "Duplicate sampler_name within one pass"));
                 }
 
-                boolean builtin = BUILTIN_TARGETS.contains(input.getTarget());
-                boolean internal = declaredTargets.containsKey(input.getTarget());
+                boolean hasTarget = input.isTargetInput();
+                boolean hasTexture = input.isTextureInput();
 
-                if (!builtin && !internal) {
-                    messages.add(fatal("G005", inputPath + ".target", "Input target not found: " + input.getTarget()));
+                if (hasTarget == hasTexture) {
+                    messages.add(fatal("G012", inputPath, "Each input must contain exactly one of: target or texture"));
+                    continue;
                 }
 
-                if (input.isUseDepthBuffer()) {
-                    if ("minecraft:main".equals(input.getTarget())) {
-                        if (!runtimeCapabilities.isSceneDepth()) {
-                            messages.add(fatal("G006", inputPath, "Scene depth requested but runtime does not provide it"));
+                if (hasTarget) {
+                    boolean builtin = BUILTIN_TARGETS.contains(input.getTarget());
+                    boolean internal = declaredTargets.containsKey(input.getTarget());
+
+                    if (!builtin && !internal) {
+                        messages.add(fatal("G005", inputPath + ".target", "Input target not found: " + input.getTarget()));
+                    }
+
+                    if (input.isUseDepthBuffer()) {
+                        if ("minecraft:main".equals(input.getTarget())) {
+                            if (!runtimeCapabilities.isSceneDepth()) {
+                                messages.add(fatal("G006", inputPath, "Scene depth requested but runtime does not provide it"));
+                            }
+                        } else if ("vulkanpostfx:shadow_depth".equals(input.getTarget())) {
+                            if (!runtimeCapabilities.isShadowDepth()) {
+                                messages.add(fatal("G006", inputPath, "Shadow depth requested but runtime does not provide it"));
+                            }
+                        } else if (declaredTargets.containsKey(input.getTarget())) {
+                            VpfxTargetDefinition target = declaredTargets.get(input.getTarget());
+                            if (!target.isUseDepth()) {
+                                messages.add(fatal(
+                                        "G006",
+                                        inputPath,
+                                        "use_depth_buffer=true but target is not declared with use_depth=true"
+                                ));
+                            }
                         }
-                    } else if ("vulkanpostfx:shadow_depth".equals(input.getTarget())) {
-                        if (!runtimeCapabilities.isShadowDepth()) {
-                            messages.add(fatal("G006", inputPath, "Shadow depth requested but runtime does not provide it"));
-                        }
-                    } else if (declaredTargets.containsKey(input.getTarget())) {
-                        VpfxTargetDefinition target = declaredTargets.get(input.getTarget());
-                        if (!target.isUseDepth()) {
-                            messages.add(fatal(
-                                    "G006",
-                                    inputPath,
-                                    "use_depth_buffer=true but target is not declared with use_depth=true"
-                            ));
-                        }
+                    }
+                }
+
+                if (hasTexture) {
+                    if (!declaredTextures.containsKey(input.getTexture())) {
+                        messages.add(fatal("G013", inputPath + ".texture", "Input texture not declared: " + input.getTexture()));
+                    }
+
+                    if (input.isUseDepthBuffer()) {
+                        messages.add(fatal("G014", inputPath, "texture input does not support use_depth_buffer=true"));
                     }
                 }
             }

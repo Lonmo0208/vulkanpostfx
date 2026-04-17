@@ -5,6 +5,7 @@ import com.ionhex975.vulkanpostfx.client.pack.ShaderPackResourceIndex;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 校验 ZIP post_effect 中的 shader 引用是否存在。
@@ -22,9 +23,8 @@ import java.util.List;
  *    - <activePackId>:post/grayscale
  *    - <activePackId>:post/blit
  *
- * 注意：
- * - 这里做的是“存在性校验”
- * - 不是实际执行 shader
+ * 同时支持 texture input：
+ *    - sampler_name + texture=<logicalName>
  */
 public final class ZipShaderReferenceValidator {
     private static final String BUILTIN_NAMESPACE = "vulkanpostfx";
@@ -49,6 +49,12 @@ public final class ZipShaderReferenceValidator {
 
             checked++;
             validateShaderRef(activePack, pass.fragmentShader(), false, missing);
+
+            for (ZipPostEffectInput input : pass.inputs()) {
+                if (input.isTextureInput()) {
+                    validateTextureInput(activePack, input.texture(), missing);
+                }
+            }
         }
 
         return new ZipShaderReferenceValidationResult(checked, missing);
@@ -98,6 +104,27 @@ public final class ZipShaderReferenceValidator {
         }
 
         missing.add(shaderRef + " [unsupported shader namespace]");
+    }
+
+    private static void validateTextureInput(
+            ShaderPackContainer activePack,
+            String logicalTextureName,
+            List<String> missing
+    ) {
+        if (logicalTextureName == null || logicalTextureName.isBlank()) {
+            missing.add("(blank texture logical name)");
+            return;
+        }
+
+        if (!activePack.isVpfxNativePack()) {
+            missing.add(logicalTextureName + " [texture input requires VPFX native pack]");
+            return;
+        }
+
+        Map<String, ?> textures = activePack.vpfxDefinition().getManifest().getTextures();
+        if (!textures.containsKey(logicalTextureName)) {
+            missing.add(logicalTextureName + " [undeclared texture logical name]");
+        }
     }
 
     private static String toBuiltinShaderAssetPath(String shaderPath, boolean vertexStage) {

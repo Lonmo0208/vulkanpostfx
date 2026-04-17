@@ -1,6 +1,8 @@
 package com.ionhex975.vulkanpostfx.client.shadow;
 
 import com.ionhex975.vulkanpostfx.VulkanPostFX;
+import com.ionhex975.vulkanpostfx.client.pack.vpfx.VpfxCapabilityResolver;
+import com.ionhex975.vulkanpostfx.client.pack.vpfx.VpfxRuntimeCapabilities;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.CommandEncoder;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -27,6 +29,13 @@ public final class ShadowDepthPassLite {
 
     public static void execute() {
         RenderSystem.assertOnRenderThread();
+
+        VpfxRuntimeCapabilities caps =
+                new VpfxCapabilityResolver().resolve();
+
+        if (!caps.isShadowDepth()) {
+            return;
+        }
 
         ShadowFrameState state = ShadowFrameState.get();
         ShadowRenderTargetsLite targets = ShadowRenderTargetsLite.get();

@@ -1,21 +1,27 @@
 package com.ionhex975.vulkanpostfx.client.pack.vpfx;
 
 /**
- * v1 先走结构能力（structural capability）解析，
- * 不是按“当前帧是否有 world / shadow target”动态判断。
+ * 当前阶段 capability 必须只声明“runtime 真的能稳定兑现”的能力。
  *
- * 也就是说，这里回答的是：
- * “当前模组 runtime 是否支持这类能力”
- * 不是：
- * “这一帧是否已经生成 shadow depth”
+ * 主线收束阶段的口径：
+ * - sceneColor: true
+ * - sceneDepth: false
+ * - shadowDepth: false
+ * - customTargets: true
+ * - compute: false
+ *
+ * 说明：
+ * 1. shadow depth 当前还不是可对外承诺的正式能力；
+ * 2. scene depth 当前也不作为稳定 capability 暴露；
+ * 3. customTargets 仅表示 VPFX graph 内部 target 组织能力存在。
  */
 public final class VpfxCapabilityResolver {
 
     public VpfxRuntimeCapabilities resolve() {
         return new VpfxRuntimeCapabilities(
                 true,   // sceneColor
-                true,   // sceneDepth
-                true,   // shadowDepth
+                false,  // sceneDepth
+                false,  // shadowDepth
                 true,   // customTargets
                 false   // compute
         );

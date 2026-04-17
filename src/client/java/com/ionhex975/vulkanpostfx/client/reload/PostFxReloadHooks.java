@@ -1,6 +1,7 @@
 package com.ionhex975.vulkanpostfx.client.reload;
 
 import com.ionhex975.vulkanpostfx.VulkanPostFX;
+import com.ionhex975.vulkanpostfx.client.pack.ActiveShaderPackManager;
 import com.ionhex975.vulkanpostfx.client.runtime.ActivePostEffectBridge;
 import com.ionhex975.vulkanpostfx.client.state.PostFxRuntimeState;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
@@ -31,11 +32,26 @@ public final class PostFxReloadHooks {
                     PreparableReloadListener.PreparationBarrier preparationBarrier,
                     Executor reloadExecutor
             ) {
+                // ⭐ 核心：在 PREPARE 阶段就完成 materialization
                 return CompletableFuture
-                        .supplyAsync(() -> Boolean.TRUE, taskExecutor)
-                        .thenCompose(preparationBarrier::wait)
-                        .thenAcceptAsync(ignored -> {
+                        .runAsync(() -> {
+                            // 1️⃣ 重新扫描 pack / config（补 lifecycle 闭环）
+                            ActiveShaderPackManager.bootstrap();
+
+                            // 2️⃣ materialize runtime pack（关键提前）
                             ActivePostEffectBridge.refreshFromActivePack();
+
+                            VulkanPostFX.LOGGER.info(
+                                    "[{}] PREPARE phase: shader packs refreshed and runtime pack materialized",
+                                    VulkanPostFX.MOD_ID
+                            );
+                        }, taskExecutor)
+
+                        // 等待资源系统 barrier
+                        .thenCompose(preparationBarrier::wait)
+
+                        // ⭐ AFTER 阶段只做 reapply（不再 materialize）
+                        .thenRunAsync(() -> {
                             PostFxRuntimeState.requestReapply();
 
                             VulkanPostFX.LOGGER.info(

@@ -4,16 +4,23 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.ionhex975.vulkanpostfx.client.runtime.texture.VpfxRuntimeTextureDescriptor;
+import com.ionhex975.vulkanpostfx.client.runtime.texture.VpfxRuntimeTextureManifest;
 
 public final class ZipPostEffectNamespaceRewriter {
     private ZipPostEffectNamespaceRewriter() {
     }
 
-    public static String rewrite(String rawJson, String originalNamespace, String runtimeNamespace) {
+    public static String rewrite(
+            String rawJson,
+            String originalNamespace,
+            String runtimeNamespace,
+            VpfxRuntimeTextureManifest runtimeTextureManifest
+    ) {
         JsonObject root = JsonParser.parseString(rawJson).getAsJsonObject();
 
         rewriteTargets(root, originalNamespace, runtimeNamespace);
-        rewritePasses(root, originalNamespace, runtimeNamespace);
+        rewritePasses(root, originalNamespace, runtimeNamespace, runtimeTextureManifest);
 
         return root.toString();
     }
@@ -34,7 +41,12 @@ public final class ZipPostEffectNamespaceRewriter {
         root.add("targets", newTargets);
     }
 
-    private static void rewritePasses(JsonObject root, String originalNamespace, String runtimeNamespace) {
+    private static void rewritePasses(
+            JsonObject root,
+            String originalNamespace,
+            String runtimeNamespace,
+            VpfxRuntimeTextureManifest runtimeTextureManifest
+    ) {
         if (!root.has("passes") || !root.get("passes").isJsonArray()) {
             return;
         }
@@ -59,7 +71,31 @@ public final class ZipPostEffectNamespaceRewriter {
                     }
 
                     JsonObject input = inputElement.getAsJsonObject();
-                    rewriteStringField(input, "target", originalNamespace, runtimeNamespace);
+
+                    if (input.has("target")) {
+                        rewriteStringField(input, "target", originalNamespace, runtimeNamespace);
+                    }
+
+                    if (input.has("texture")) {
+                        String logicalTextureName = input.get("texture").getAsString();
+                        VpfxRuntimeTextureDescriptor descriptor =
+                                runtimeTextureManifest.getTexture(logicalTextureName);
+
+                        if (descriptor == null) {
+                            throw new IllegalStateException(
+                                    "Texture logical name is not registered in runtime texture manifest: " + logicalTextureName
+                            );
+                        }
+
+                        input.remove("texture");
+                        input.remove("target");
+                        input.remove("use_depth_buffer");
+
+                        input.addProperty("location", descriptor.getLocationId());
+                        input.addProperty("width", descriptor.getWidth());
+                        input.addProperty("height", descriptor.getHeight());
+                        input.addProperty("bilinear", descriptor.isBilinear());
+                    }
                 }
             }
         }

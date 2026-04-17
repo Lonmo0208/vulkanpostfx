@@ -71,8 +71,36 @@ public final class ZipPostEffectParser {
 
                     JsonObject inputObject = inputElement.getAsJsonObject();
                     String samplerName = getRequiredString(inputObject, "sampler_name");
-                    String target = getRequiredString(inputObject, "target");
-                    inputs.add(new ZipPostEffectInput(samplerName, target));
+
+                    String target = getOptionalString(inputObject, "target");
+                    String texture = getOptionalString(inputObject, "texture");
+
+                    boolean useDepthBuffer = false;
+                    if (inputObject.has("use_depth_buffer")) {
+                        JsonElement depthElement = inputObject.get("use_depth_buffer");
+                        if (!depthElement.isJsonPrimitive() || !depthElement.getAsJsonPrimitive().isBoolean()) {
+                            throw new IllegalStateException("input.use_depth_buffer must be a boolean");
+                        }
+                        useDepthBuffer = depthElement.getAsBoolean();
+                    }
+
+                    boolean hasTarget = target != null && !target.isBlank();
+                    boolean hasTexture = texture != null && !texture.isBlank();
+
+                    if (hasTarget == hasTexture) {
+                        throw new IllegalStateException("each input must contain exactly one of: target or texture");
+                    }
+
+                    if (hasTexture && useDepthBuffer) {
+                        throw new IllegalStateException("texture input does not support use_depth_buffer=true");
+                    }
+
+                    inputs.add(new ZipPostEffectInput(
+                            samplerName,
+                            hasTarget ? target : "",
+                            hasTexture ? texture : "",
+                            useDepthBuffer
+                    ));
                 }
             }
 
@@ -90,6 +118,20 @@ public final class ZipPostEffectParser {
     private static String getRequiredString(JsonObject object, String key) {
         if (!object.has(key) || !object.get(key).isJsonPrimitive()) {
             throw new IllegalStateException("missing or invalid string field: " + key);
+        }
+        String value = object.get(key).getAsString();
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("missing or blank string field: " + key);
+        }
+        return value;
+    }
+
+    private static String getOptionalString(JsonObject object, String key) {
+        if (!object.has(key)) {
+            return "";
+        }
+        if (!object.get(key).isJsonPrimitive()) {
+            throw new IllegalStateException("invalid string field: " + key);
         }
         return object.get(key).getAsString();
     }

@@ -38,15 +38,23 @@ public final class VpfxRuntimeTextureManifestReader {
                 }
 
                 JsonObject obj = entry.getValue().getAsJsonObject();
-                String relativePath = getRequiredString(obj, "relative_path", manifestPath);
-                String resourceId = getRequiredString(obj, "resource_id", manifestPath);
+                String sourceZipPath = getRequiredString(obj, "source_zip_path", manifestPath);
+                String effectPath = getRequiredString(obj, "effect_path", manifestPath);
+                String locationId = getRequiredString(obj, "location_id", manifestPath);
+                int width = getRequiredInt(obj, "width", manifestPath);
+                int height = getRequiredInt(obj, "height", manifestPath);
+                boolean bilinear = getRequiredBoolean(obj, "bilinear", manifestPath);
                 String filterRaw = getRequiredString(obj, "filter", manifestPath);
                 String wrapRaw = getRequiredString(obj, "wrap", manifestPath);
 
                 textures.put(logicalName, new VpfxRuntimeTextureDescriptor(
                         logicalName,
-                        relativePath,
-                        resourceId,
+                        sourceZipPath,
+                        effectPath,
+                        locationId,
+                        width,
+                        height,
+                        bilinear,
                         VpfxTextureFilter.fromJson(filterRaw),
                         VpfxTextureWrap.fromJson(wrapRaw)
                 ));
@@ -69,5 +77,21 @@ public final class VpfxRuntimeTextureManifestReader {
             throw new IOException("Missing required string field '" + key + "' in " + path);
         }
         return parent.get(key).getAsString();
+    }
+
+    private static int getRequiredInt(JsonObject parent, String key, Path path) throws IOException {
+        if (!parent.has(key) || !parent.get(key).isJsonPrimitive()
+                || !parent.get(key).getAsJsonPrimitive().isNumber()) {
+            throw new IOException("Missing required int field '" + key + "' in " + path);
+        }
+        return parent.get(key).getAsInt();
+    }
+
+    private static boolean getRequiredBoolean(JsonObject parent, String key, Path path) throws IOException {
+        if (!parent.has(key) || !parent.get(key).isJsonPrimitive()
+                || !parent.get(key).getAsJsonPrimitive().isBoolean()) {
+            throw new IOException("Missing required boolean field '" + key + "' in " + path);
+        }
+        return parent.get(key).getAsBoolean();
     }
 }

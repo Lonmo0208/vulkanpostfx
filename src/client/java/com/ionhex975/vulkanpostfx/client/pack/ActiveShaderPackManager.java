@@ -35,6 +35,9 @@ public final class ActiveShaderPackManager {
     }
 
     public static void bootstrap() {
+        activePack = null;
+        discoveredPacks = List.of();
+
         SOURCES.clear();
 
         Path runDirectory = Minecraft.getInstance().gameDirectory.toPath();
