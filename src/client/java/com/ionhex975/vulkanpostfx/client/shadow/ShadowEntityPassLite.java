@@ -16,8 +16,9 @@ import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.phys.Vec3;
+
 
 public final class ShadowEntityPassLite {
     private static final ProjectionMatrixBuffer SHADOW_PROJECTION =
@@ -88,7 +89,7 @@ public final class ShadowEntityPassLite {
                 continue;
             }
 
-            boolean isPlayer = renderState.entityType == EntityType.PLAYER;
+            boolean isPlayer = renderState.entityType == EntityTypes.PLAYER;
             if (isPlayer) {
                 if (!shadowState.isShadowPlayer()) {
                     continue;
