@@ -135,8 +135,8 @@ public final class ShadowEntityPassLite {
             // 不跑 translucent feature，避免把 shadowFeature/nameTag/text 等透明阶段内容带进 shadow pass。
             featureRenderDispatcher.renderSolidFeatures();
 
-            renderBuffers.bufferSource().endBatch();
-            renderBuffers.crumblingBufferSource().endBatch();
+            renderBuffers.bufferSource().endFrame();
+            renderBuffers.crumblingBufferSource().endFrame();
             renderBuffers.outlineBufferSource().endOutlineBatch();
 
             lastSkipReason = null;

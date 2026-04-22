@@ -50,7 +50,7 @@ public final class PostFxHookBridge {
             String backend = detectBackendName();
             PostFxRuntimeState.setBackendName(backend);
 
-            RenderTarget mainTarget = minecraft.getMainRenderTarget();
+            RenderTarget mainTarget = minecraft.gameRenderer.mainRenderTarget();
             int width = mainTarget.width;
             int height = mainTarget.height;
             boolean improvedTransparency = minecraft.options.improvedTransparency().get();
@@ -87,7 +87,7 @@ public final class PostFxHookBridge {
         if (!firstWorldTailLogged) {
             firstWorldTailLogged = true;
 
-            RenderTarget mainTarget = minecraft.getMainRenderTarget();
+            RenderTarget mainTarget = minecraft.gameRenderer.mainRenderTarget();
             ShadowFrameState shadowState = ShadowFrameState.get();
 
             VulkanPostFX.LOGGER.info(
@@ -108,7 +108,7 @@ public final class PostFxHookBridge {
         if (!firstPostSlotLogged) {
             firstPostSlotLogged = true;
 
-            RenderTarget mainTarget = minecraft.getMainRenderTarget();
+            RenderTarget mainTarget = minecraft.gameRenderer.mainRenderTarget();
             Identifier currentPostEffect = gameRenderer.currentPostEffect();
 
             VulkanPostFX.LOGGER.info(

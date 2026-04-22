@@ -180,8 +180,8 @@ public final class VpfxBuiltinUniformBuffer {
             inverseProjectionMatrix.identity();
             zNear = 0.05F;
             zFar = 1.0F;
-            screenWidth = Math.max(1.0F, minecraft.getMainRenderTarget().width);
-            screenHeight = Math.max(1.0F, minecraft.getMainRenderTarget().height);
+            screenWidth = Math.max(1.0F, minecraft.gameRenderer.mainRenderTarget().width);
+            screenHeight = Math.max(1.0F, minecraft.gameRenderer.mainRenderTarget().height);
             aspect = screenWidth / screenHeight;
         }
 

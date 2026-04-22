@@ -31,7 +31,7 @@ public final class ShadowDepthMirrorPass {
             return;
         }
 
-        RenderTarget mainTarget = minecraft.getMainRenderTarget();
+        RenderTarget mainTarget = minecraft.gameRenderer.mainRenderTarget();
         RenderTarget shadowTarget = targets.getShadowDepthTarget();
 
         if (mainTarget == null || shadowTarget == null) {

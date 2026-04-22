@@ -37,7 +37,7 @@ public final class ShadowFrameCoordinator {
         }
 
         float sunAngleDegrees = minecraft.gameRenderer
-                .getMainCamera()
+                .mainCamera()
                 .attributeProbe()
                 .getValue(EnvironmentAttributes.SUN_ANGLE, 0.0F);
 

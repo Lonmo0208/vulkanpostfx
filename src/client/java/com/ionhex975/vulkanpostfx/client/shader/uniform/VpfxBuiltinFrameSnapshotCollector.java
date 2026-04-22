@@ -46,7 +46,7 @@ public final class VpfxBuiltinFrameSnapshotCollector {
             rainStrength = level.getRainLevel(tickDelta);
         }
 
-        Camera camera = minecraft.gameRenderer != null ? minecraft.gameRenderer.getMainCamera() : null;
+        Camera camera = minecraft.gameRenderer != null ? minecraft.gameRenderer.mainCamera() : null;
         if (camera != null) {
             Vec3 pos = camera.position();
             camX = pos.x;

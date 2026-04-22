@@ -18,8 +18,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererRenderLevelMixin {
-    @Inject(method = "renderLevel", at = @At("HEAD"))
-    private void vulkanpostfx$onRenderLevelHead(
+
+    @Inject(method = "render", at = @At("HEAD"))
+    private void vulkanpostfx$onRenderHead(
             GraphicsResourceAllocator resourceAllocator,
             DeltaTracker deltaTracker,
             boolean renderOutline,
@@ -28,15 +29,14 @@ public abstract class LevelRendererRenderLevelMixin {
             GpuBufferSlice terrainFog,
             Vector4f fogColor,
             boolean shouldRenderSky,
-            ChunkSectionsToRender chunkSectionsToRender,
             CallbackInfo ci
     ) {
         Minecraft minecraft = Minecraft.getInstance();
 
         VpfxFrameProjectionState.capture(
                 cameraState,
-                minecraft.getMainRenderTarget().width,
-                minecraft.getMainRenderTarget().height
+                minecraft.gameRenderer.mainRenderTarget().width,
+                minecraft.gameRenderer.mainRenderTarget().height
         );
 
         PostFxHookBridge.onWorldRenderHead(
@@ -49,8 +49,8 @@ public abstract class LevelRendererRenderLevelMixin {
         );
     }
 
-    @Inject(method = "renderLevel", at = @At("TAIL"))
-    private void vulkanpostfx$onRenderLevelTail(
+    @Inject(method = "render", at = @At("TAIL"))
+    private void vulkanpostfx$onRenderTail(
             GraphicsResourceAllocator resourceAllocator,
             DeltaTracker deltaTracker,
             boolean renderOutline,
@@ -59,7 +59,6 @@ public abstract class LevelRendererRenderLevelMixin {
             GpuBufferSlice terrainFog,
             Vector4f fogColor,
             boolean shouldRenderSky,
-            ChunkSectionsToRender chunkSectionsToRender,
             CallbackInfo ci
     ) {
         PostFxHookBridge.onWorldRenderTail(Minecraft.getInstance());
